@@ -1,0 +1,62 @@
+module Bank where
+
+template BankAccount
+    with
+        bank: Party
+        accountOwner: Party
+        balance: Numeric 2
+    
+    where
+        signatory bank
+        observer accountOwner
+        key (bank, accountOwner) : (Party, Party)
+        maintainer key._1
+    
+        choice Deposit: ContractId BankAccount
+            with
+                amount: Numeric 2
+            controller accountOwner
+                do
+                    create this with
+                        bank
+                        accountOwner
+                        balance = amount + balance
+
+template BankService
+    with
+        bank: Party
+        customers: [Party]
+    where
+        signatory bank
+        observer customers
+    
+        choice OpenAccount: (ContractId BankService, ContractId BankAccount)
+
+            with
+                accountOwner: Party
+            controller bank
+                do
+                    bankServiceId <- create this with
+                        bank
+                        customers = accountOwner :: customers
+                    
+                    accountCid <- create BankAccount with
+                        bank
+                        accountOwner
+                        balance = 0.0
+                    
+                    return (bankServiceId, accountCid)
+        
+        nonconsuming choice PayReward: ContractId BankAccount
+            with
+                accountCid: ContractId BankAccount
+                reward: Numeric 2
+            controller bank
+                do
+                    account <- fetch accountCid
+                    archive accountCid
+                    create BankAccount with
+                        bank
+                        accountOwner = account.accountOwner
+                        balance = account.balance + reward
+

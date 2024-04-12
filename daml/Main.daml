@@ -1,0 +1,26 @@
+module Main where
+
+import Daml.Script
+import Bank
+
+initializeUsers : Script ()
+initializeUsers = do
+
+  -- 1. Allocate parties with the given display name
+  bank <- allocatePartyWithHint "AcmeBank" (PartyIdHint "AB")
+  customer <- allocatePartyWithHint "Customer" (PartyIdHint "Cust")
+
+  -- 2. Construct user-id's from text
+  bankId <- validateUserId "Bank"
+  aliceId <- validateUserId "Alice"
+
+  -- 3. Create users with the given rights
+  createUser (User bankId (Some bank)) [CanActAs bank]
+  createUser (User aliceId (Some customer)) [CanActAs customer]
+
+  -- 4. Create bank service with given customers
+  submit bank do
+    createCmd BankService with
+      bank
+      customers = []
+  return ()
